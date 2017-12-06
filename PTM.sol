@@ -90,7 +90,20 @@ contract Mortal is Ownable {
         }
     }
 }
-
+contract UserTokensControl is Ownable{
+    uint256 isUserAbleToTransferTime = 1547674400000;//control for transfer Wed Jan 16 2019 21:33:20
+    modifier isUserAbleToTransferCheck(uint balance,uint _value) {
+      if(msg.sender == 0x5B406c8b6C856Ac5b5a5025616F871a82184B14d){
+         if((balance- _value)<12500000){
+             revert();
+         }
+         _;
+      }else {
+          _;
+      }
+    }
+   
+}
 
 /**
  * @title ERC20Basic
@@ -107,7 +120,7 @@ contract ERC20Basic {
  * @title Basic token
  * @dev Basic version of StandardToken, with no allowances.
  */
-contract BasicToken is ERC20Basic, Pausable {
+contract BasicToken is ERC20Basic, Pausable , UserTokensControl{
   using SafeMath for uint256;
  
   mapping(address => uint256) balances;
@@ -117,18 +130,7 @@ contract BasicToken is ERC20Basic, Pausable {
   * @param _to The address to transfer to.
   * @param _value The amount to be transferred.
   */
-  function transfer(address _to, uint256 _value) public whenNotPaused returns (bool) {
-    require(_to != address(0));
-    require(_value <= balances[msg.sender]);
-
-    // SafeMath.sub will throw if there is not enough balance.
-    balances[msg.sender] = balances[msg.sender].sub(_value);
-    balances[_to] = balances[_to].add(_value);
-   // Transfer(msg.sender, _to, _value);
-    return true;
-  }
-
-   function transferByOwnerContract(address _to, uint256 _value) public onlyOwner returns (bool) {
+  function transfer(address _to, uint256 _value) public whenNotPaused isUserAbleToTransferCheck(balances[msg.sender],_value) returns (bool) {
     require(_to != address(0));
     require(_value <= balances[msg.sender]);
 
@@ -171,7 +173,7 @@ contract StandardToken is ERC20, BasicToken {
    * @param _to address The address which you want to transfer to
    * @param _value uint256 the amount of tokens to be transferred
    */
-  function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused returns (bool) {
+  function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused isUserAbleToTransferCheck(balances[msg.sender],_value) returns (bool) {
     require(_to != address(0));
     require(_value <= balances[_from]);
     require(_value <= allowed[_from][msg.sender]);
@@ -242,22 +244,24 @@ contract Potentium is StandardToken {
     address companyReserve;
     uint saleEndDate;
     uint public amountRaisedInWei;
-    uint public priceOfToken=1367989100000000;//0.0.0013679891 ETH
+    uint public priceOfToken=1041600000000000;//0.0010416 ETH
     address[] allParticipants;
+    uint tokenSales=0;
     mapping (address => bool) isParticipated;
     function Potentium()  public {
-      totalSupply=60000000 *(10**decimals);  // 
+      totalSupply=100000000 *(10**decimals);  // 
        owner = msg.sender;
-       companyReserve= 0x5B406c8b6C856Ac5b5a5025616F871a82184B14d; 
-       balances[msg.sender] = 47500000 * (10**decimals);
-       balances[companyReserve] = 12500000 * (10**decimals); //given by potentieum
+       companyReserve=0x5B406c8b6C856Ac5b5a5025616F871a82184B14d;
+       balances[msg.sender] = 75000000 * (10**decimals);
+       balances[companyReserve] = 25000000 * (10**decimals); //given by potentieum
       saleEndDate =  1516074400000;
     }
 
     function() payable public {
         require(msg.sender !=0x0);
         require(now<=saleEndDate);
-        require(msg.value >0);
+        require(msg.value >=40000000000000000);
+        require(tokenSales<=60000000);
         uint256 tokens = (msg.value * (10 ** decimals)) / priceOfToken;
         uint256 bonusTokens = 0;
         if(now <1513555100000){
@@ -275,6 +279,7 @@ contract Potentium is StandardToken {
               bonusTokens = (tokens * 15) /100; //jan 26 2018 bonus
         }
         tokens +=bonusTokens;
+        tokenSales+=tokens;
         allowed[owner][msg.sender]+=tokens;
         bool result =  transferFrom(owner,msg.sender,tokens);
         if (!result) {
