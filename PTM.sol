@@ -1,4 +1,3 @@
-
 pragma solidity ^0.4.16;
 contract Ownable {
     address public owner;
@@ -91,10 +90,10 @@ contract Mortal is Ownable {
     }
 }
 contract UserTokensControl is Ownable{
-    uint256 isUserAbleToTransferTime = 1547674400000;//control for transfer Wed Jan 16 2019 21:33:20
+    uint256 isUserAbleToTransferTime = 1579174400000;//control for transfer Thu Jan 16 2020 
     modifier isUserAbleToTransferCheck(uint balance,uint _value) {
-      if(msg.sender == 0x5B406c8b6C856Ac5b5a5025616F871a82184B14d){
-         if((balance- _value)<12500000){
+      if(msg.sender == 0x3b06AC092339D382050C892aD035b5F140B7C628){
+         if(now<isUserAbleToTransferTime){
              revert();
          }
          _;
@@ -237,7 +236,7 @@ contract StandardToken is ERC20, BasicToken {
 }
 
 
-contract Potentium is StandardToken {
+contract Potentium is StandardToken, Mortal {
     string public constant name = "POTENTIAM";
     uint public constant decimals = 18;
     string public constant symbol = "PTM";
@@ -247,21 +246,29 @@ contract Potentium is StandardToken {
     uint public priceOfToken=1041600000000000;//0.0010416 ETH
     address[] allParticipants;
     uint tokenSales=0;
+     mapping(address => uint256)public  balancesHold;
+    event TokenHold( address indexed to, uint256 value);
     mapping (address => bool) isParticipated;
+    uint public icoStartDate;
+    uint public icoWeek1Bonus = 10;
+    uint public icoWeek2Bonus = 7;
+    uint public icoWeek3Bonus = 5;
+    uint public icoWeek4Bonus = 3;
     function Potentium()  public {
       totalSupply=100000000 *(10**decimals);  // 
        owner = msg.sender;
-       companyReserve=0x5B406c8b6C856Ac5b5a5025616F871a82184B14d;
+       companyReserve=0x3b06AC092339D382050C892aD035b5F140B7C628;
        balances[msg.sender] = 75000000 * (10**decimals);
        balances[companyReserve] = 25000000 * (10**decimals); //given by potentieum
-      saleEndDate =  1516074400000;
+      saleEndDate =  1520554400000;  //8 March 2018
     }
 
-    function() payable public {
+    
+    function() payable whenNotPaused public {
         require(msg.sender !=0x0);
         require(now<=saleEndDate);
-        require(msg.value >=40000000000000000);
-        require(tokenSales<=60000000);
+        require(msg.value >=40000000000000000); //minimum 0.04 eth
+        require(tokenSales<=(60000000 * (10 ** decimals)));
         uint256 tokens = (msg.value * (10 ** decimals)) / priceOfToken;
         uint256 bonusTokens = 0;
         if(now <1513555100000){
@@ -273,31 +280,70 @@ contract Potentium is StandardToken {
         }else if(now <1515974400000){
             bonusTokens = (tokens * 25) /100; //jan 14 2018 bonus
         }
-        else if(now <1515974400000){
+        else if(now <1516578400000){
             bonusTokens = (tokens * 20) /100; //jan 21 2018 bonus
-        }else if(now <1515974400000){
+        }else if(now <1517011400000){
               bonusTokens = (tokens * 15) /100; //jan 26 2018 bonus
+        }
+        else if(now>=icoStartDate){
+            if(now <= (icoStartDate + 1 * 7 days) ){
+                bonusTokens = (tokens * icoWeek1Bonus) /100; 
+            }
+            else if(now <= (icoStartDate + 2 * 7 days) ){
+                bonusTokens = (tokens * icoWeek2Bonus) /100; 
+            }
+           else if(now <= (icoStartDate + 3 * 7 days) ){
+                bonusTokens = (tokens * icoWeek3Bonus) /100; 
+            }
+           else if(now <= (icoStartDate + 4 * 7 days) ){
+                bonusTokens = (tokens * icoWeek4Bonus) /100; 
+            }
+            
         }
         tokens +=bonusTokens;
         tokenSales+=tokens;
-        allowed[owner][msg.sender]+=tokens;
-        bool result =  transferFrom(owner,msg.sender,tokens);
-        if (!result) {
-            revert();
+        balancesHold[msg.sender]+=tokens;
+        amountRaisedInWei = amountRaisedInWei + msg.value;
+        if(!isParticipated[msg.sender]){
+            allParticipants.push(msg.sender);
         }
-        else{
-            amountRaisedInWei = amountRaisedInWei + msg.value;
-            if(!isParticipated[msg.sender]){
-                allParticipants.push(msg.sender);
-            }
-        }
+        TokenHold(msg.sender,tokens);//event to dispactc as token hold successfully
+    }
+    function distributeTokensAfterIcoByOwner()public onlyOwner{
+        for (uint i = 0; i < allParticipants.length; i++) {
+                    address userAdder=allParticipants[i];
+                    var tokens = balancesHold[userAdder];
+                    if(tokens>0){
+                    allowed[owner][userAdder] += tokens;
+                    transferFrom(owner, userAdder, tokens);
+                    balancesHold[userAdder] = 0;
+                     }
+                 }
     }
     /**
    * @dev called by the owner to extend deadline relative to last deadLine Time,
    * to accept ether and transfer tokens
    */
-   function extendDeadline(uint daysToExtend)public onlyOwner{
-       saleEndDate = saleEndDate +daysToExtend * 1 days;
+   function extendSaleEndDate(uint saleEndTimeInMIllis)public onlyOwner{
+       saleEndDate = saleEndTimeInMIllis;
+   }
+   function setIcoStartDate(uint icoStartDateInMilli)public onlyOwner{
+       icoStartDate = icoStartDateInMilli;
+   }
+    function setICOWeek1Bonus(uint bonus)public onlyOwner{
+       icoWeek1Bonus= bonus;
+   }
+     function setICOWeek2Bonus(uint bonus)public onlyOwner{
+       icoWeek2Bonus= bonus;
+   }
+     function setICOWeek3Bonus(uint bonus)public onlyOwner{
+       icoWeek3Bonus= bonus;
+   }
+     function setICOWeek4Bonus(uint bonus)public onlyOwner{
+       icoWeek4Bonus= bonus;
+   }
+   function rateForOnePTM(uint rateInWei) public onlyOwner{
+       priceOfToken = rateInWei;
    }
 
    //function ext
