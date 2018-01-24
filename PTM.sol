@@ -1,15 +1,41 @@
-pragma solidity ^0.4.16;
+pragma solidity ^0.4.18;
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of "user permissions".
+ */
 contract Ownable {
-    address public owner;
+  address public owner;
+  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+  
+  /**
+   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+   * account.
+   */
+  function Ownable() public {
+    owner = msg.sender;
+  }
+
+  /**
+   * @dev Throws if called by any account other than the owner.
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
 
 
-    modifier onlyOwner() {
-        if (msg.sender == owner)
-            _;
-        else {
-            revert();
-        }
-    }
+  /**
+   * @dev Allows the current owner to transfer control of the contract to a newOwner.
+   * @param newOwner The address to transfer ownership to.
+   */
+  function transferOwnership(address newOwner) public onlyOwner {
+    require(newOwner != address(0));
+    OwnershipTransferred(owner, newOwner);
+    owner = newOwner;
+  }
+
 }
 
 /**
@@ -17,31 +43,35 @@ contract Ownable {
  * @dev Math operations with safety checks that throw on error
  */
 library SafeMath {
-  function mul(uint256 a, uint256 b) internal constant returns (uint256) {
+  function mul(uint256 a, uint256 b) internal pure returns (uint256) {
     uint256 c = a * b;
     assert(a == 0 || c / a == b);
     return c;
   }
 
-  function div(uint256 a, uint256 b) internal constant returns (uint256) {
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
     assert(b > 0); // Solidity automatically throws when dividing by 0
     uint256 c = a / b;
     // assert(a == b * c + a % b); // There is no case in which this doesn't hold
     return c;
   }
 
-  function sub(uint256 a, uint256 b) internal constant returns (uint256) {
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
     assert(b <= a);
     return a - b;
   }
 
-  function add(uint256 a, uint256 b) internal constant returns (uint256) {
+  function add(uint256 a, uint256 b) internal pure returns (uint256) {
     uint256 c = a + b;
     assert(c >= a);
     return c;
   }
 }
 
+/**
+ * @title Pausable
+ * @dev Base contract which allows children to implement an emergency stop mechanism.
+ */
 contract Pausable is Ownable {
   event Pause();
   event Unpause();
@@ -50,7 +80,7 @@ contract Pausable is Ownable {
 
 
   /**
-   *  modifier to allow actions only when the contract IS paused
+   * @dev Modifier to make a function callable only when the contract is not paused.
    */
   modifier whenNotPaused() {
     require(!paused);
@@ -58,7 +88,7 @@ contract Pausable is Ownable {
   }
 
   /**
-   *  modifier to allow actions only when the contract IS NOT paused
+   * @dev Modifier to make a function callable only when the contract is paused.
    */
   modifier whenPaused() {
     require(paused);
@@ -66,80 +96,101 @@ contract Pausable is Ownable {
   }
 
   /**
-   *  called by the owner to pause, triggers stopped state
+   * @dev called by the owner to pause, triggers stopped state
    */
-  function pause() public onlyOwner whenNotPaused {
+  function pause() onlyOwner whenNotPaused public {
     paused = true;
     Pause();
   }
 
   /**
-   *  called by the owner to unpause, returns to normal state
+   * @dev called by the owner to unpause, returns to normal state
    */
-  function unpause() public  onlyOwner whenPaused {
+  function unpause() onlyOwner whenPaused public {
     paused = false;
     Unpause();
   }
 }
-contract Mortal is Ownable {
+/**
+ * @title Destructible
+ * @dev Base contract that can be destroyed by owner. All funds in contract will be sent to the owner.
+ */
+contract Destructible is Ownable {
 
-    function kill()  public {
-        if (msg.sender == owner) {
-            selfdestruct(owner);
-        }
-    }
+  function Destructible() public payable { }
+
+  /**
+   * @dev Transfers the current balance to the owner and terminates the contract.
+   */
+  function destroy() onlyOwner public {
+    selfdestruct(owner);
+  }
+
+  function destroyAndSend(address _recipient) onlyOwner public {
+    selfdestruct(_recipient);
+  }
 }
-contract UserTokensControl is Ownable{
-    uint256 isUserAbleToTransferTime = 1579174400000;//control for transfer Thu Jan 16 2020 
-    modifier isUserAbleToTransferCheck(uint balance,uint _value) {
-      if(msg.sender == 0x3b06AC092339D382050C892aD035b5F140B7C628){
-         if(now<isUserAbleToTransferTime){
-             revert();
-         }
-         _;
-      }else {
-          _;
-      }
-    }
-   
-}
+
 
 /**
  * @title ERC20Basic
  * @dev Simpler version of ERC20 interface
  */
-contract ERC20Basic {
+contract ERC20Basic  {
   uint256 public totalSupply;
-  function balanceOf(address who) public constant returns (uint256);
+  function balanceOf(address who) public view returns (uint256);
   function transfer(address to, uint256 value) public returns (bool);
   event Transfer(address indexed from, address indexed to, uint256 value);
 }
-
 /**
  * @title Basic token
  * @dev Basic version of StandardToken, with no allowances.
  */
-contract BasicToken is ERC20Basic, Pausable , UserTokensControl{
+contract BasicToken is ERC20Basic, Pausable {
   using SafeMath for uint256;
- 
+  uint256 public etherRaised;
   mapping(address => uint256) balances;
-
+  address companyReserve;
+  uint256 deployTime;
+  modifier isUserAbleToTransferCheck(uint256 _value) {
+  if(msg.sender == companyReserve){
+          uint256 balanceRemaining = balanceOf(companyReserve);
+          uint256 timeDiff = now - deployTime;
+          uint256 totalMonths = timeDiff / 30 days;
+          if(totalMonths == 0){
+              totalMonths  = 1;
+          }
+          uint256 percentToWitdraw = totalMonths * 5;
+          uint256 tokensToWithdraw = ((25000000 * (10**18)) * percentToWitdraw)/100;
+          uint256 spentTokens = (25000000 * (10**18)) - balanceRemaining;
+          if(spentTokens + _value <= tokensToWithdraw){
+              _;
+          }
+          else{
+              revert();
+          }
+        }else{
+           _;
+        }
+    }
+    
   /**
   * @dev transfer token for a specified address
   * @param _to The address to transfer to.
   * @param _value The amount to be transferred.
   */
-  function transfer(address _to, uint256 _value) public whenNotPaused isUserAbleToTransferCheck(balances[msg.sender],_value) returns (bool) {
+  function transfer(address _to, uint256 _value) public  isUserAbleToTransferCheck(_value) returns (bool) {
     require(_to != address(0));
     require(_value <= balances[msg.sender]);
 
     // SafeMath.sub will throw if there is not enough balance.
     balances[msg.sender] = balances[msg.sender].sub(_value);
     balances[_to] = balances[_to].add(_value);
-   // Transfer(msg.sender, _to, _value);
+    Transfer(msg.sender, _to, _value);
     return true;
   }
 
+    
   /**
   * @dev Gets the balance of the specified address.
   * @param _owner The address to query the the balance of.
@@ -155,7 +206,7 @@ contract BasicToken is ERC20Basic, Pausable , UserTokensControl{
  * @dev see https://github.com/ethereum/EIPs/issues/20
  */
 contract ERC20 is ERC20Basic {
-  function allowance(address owner, address spender) public constant returns (uint256);
+  function allowance(address owner, address spender) public view returns (uint256);
   function transferFrom(address from, address to, uint256 value) public returns (bool);
   function approve(address spender, uint256 value) public returns (bool);
   event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -172,7 +223,7 @@ contract StandardToken is ERC20, BasicToken {
    * @param _to address The address which you want to transfer to
    * @param _value uint256 the amount of tokens to be transferred
    */
-  function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused isUserAbleToTransferCheck(balances[msg.sender],_value) returns (bool) {
+  function transferFrom(address _from, address _to, uint256 _value) public isUserAbleToTransferCheck(_value) returns (bool) {
     require(_to != address(0));
     require(_value <= balances[_from]);
     require(_value <= allowed[_from][msg.sender]);
@@ -180,7 +231,7 @@ contract StandardToken is ERC20, BasicToken {
     balances[_from] = balances[_from].sub(_value);
     balances[_to] = balances[_to].add(_value);
     allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
-  //  Transfer(_from, _to, _value);
+    Transfer(_from, _to, _value);
     return true;
   }
 
@@ -236,146 +287,106 @@ contract StandardToken is ERC20, BasicToken {
 }
 
 
-contract Potentium is StandardToken, Mortal {
+contract POTENTIAM is StandardToken, Destructible {
     string public constant name = "POTENTIAM";
+    using SafeMath for uint256;
     uint public constant decimals = 18;
     string public constant symbol = "PTM";
-    address companyReserve;
-    uint saleEndDate;
-    uint public amountRaisedInWei;
-    uint public priceOfToken=1041600000000000;//0.0010416 ETH
+    uint public priceOfToken=181818181818181;//1 eth = 5500 PTM
     address[] allParticipants;
+   
     uint tokenSales=0;
-     mapping(address => uint256)public  balancesHold;
-    event TokenHold( address indexed to, uint256 value);
-    mapping (address => bool) isParticipated;
-    uint public icoStartDate;
-    uint public icoWeek1Bonus = 10;
-    uint public icoWeek2Bonus = 7;
-    uint public icoWeek3Bonus = 5;
-    uint public icoWeek4Bonus = 3;
-    function Potentium()  public {
-      totalSupply=100000000 *(10**decimals);  // 
+    uint256 public firstWeekPreICOBonusEstimate;
+    uint256  public secondWeekPreICOBonusEstimate;
+    uint256  public firstWeekMainICOBonusEstimate;
+    uint256 public secondWeekMainICOBonusEstimate;
+    uint256 public thirdWeekMainICOBonusEstimate;
+    uint256 public forthWeekMainICOBonusEstimate;
+    uint256 public firstWeekPreICOBonusRate;
+    uint256 secondWeekPreICOBonusRate;
+    uint256 firstWeekMainICOBonusRate;
+    uint256 secondWeekMainICOBonusRate;
+    uint256 thirdWeekMainICOBonusRate;
+    uint256 forthWeekMainICOBonusRate;
+    function POTENTIAM()  public {
+       totalSupply = 100000000 * (10**decimals);  // 
        owner = msg.sender;
-       companyReserve=0x3b06AC092339D382050C892aD035b5F140B7C628;
-       balances[msg.sender] = 75000000 * (10**decimals);
-       balances[companyReserve] = 25000000 * (10**decimals); //given by potentieum
-      saleEndDate =  1520554400000;  //8 March 2018
+       companyReserve =   0x5b162cee49e4bf42e8b1145a9c3792ca2fb7ec42;
+       balances[msg.sender] += 75000000 * (10 **decimals);
+       balances[companyReserve]  += 25000000 * (10**decimals);
+       firstWeekPreICOBonusEstimate = now;
+       deployTime = firstWeekPreICOBonusEstimate;
+       secondWeekPreICOBonusEstimate = firstWeekPreICOBonusEstimate + 7 days;
+       firstWeekMainICOBonusEstimate = firstWeekPreICOBonusEstimate + 14 days;
+       secondWeekMainICOBonusEstimate = firstWeekPreICOBonusEstimate + 21 days;
+       thirdWeekMainICOBonusEstimate = firstWeekPreICOBonusEstimate + 28 days;
+       forthWeekMainICOBonusEstimate = firstWeekPreICOBonusEstimate + 35 days;
+       firstWeekPreICOBonusRate = 20;
+       secondWeekPreICOBonusRate = 18;
+       firstWeekMainICOBonusRate = 12;
+       secondWeekMainICOBonusRate = 8;
+       thirdWeekMainICOBonusRate = 4;
+       forthWeekMainICOBonusRate = 0;
     }
 
-    
-    function() payable whenNotPaused public {
-        require(msg.sender !=0x0);
-        require(now<=saleEndDate);
-        require(msg.value >=40000000000000000); //minimum 0.04 eth
-        require(tokenSales<=(60000000 * (10 ** decimals)));
+    function()  public whenNotPaused payable {
+        require(msg.value>0);
+        require(now<=forthWeekMainICOBonusEstimate);
+        require(tokenSales < (60000000 * (10 **decimals)));
+        uint256 bonus = 0;
+        if(now<=firstWeekPreICOBonusEstimate){
+            bonus = firstWeekPreICOBonusRate;
+        }else if(now <=secondWeekPreICOBonusEstimate){
+            bonus = secondWeekPreICOBonusRate;
+        }else if(now<=firstWeekMainICOBonusEstimate){
+            bonus = firstWeekMainICOBonusRate;
+        }else if(now<=secondWeekMainICOBonusEstimate){
+            bonus = secondWeekMainICOBonusRate;
+        }
+        else if(now<=thirdWeekMainICOBonusEstimate){
+            bonus = thirdWeekMainICOBonusRate;
+        }
         uint256 tokens = (msg.value * (10 ** decimals)) / priceOfToken;
-        uint256 bonusTokens = 0;
-        if(now <1513555100000){
-            bonusTokens = (tokens * 40) /100; //17 dec 2017 % bonus presale
-        }else if(now <1514760800000) {
-            bonusTokens = (tokens * 35) /100; //31 dec 2017 % bonus
-        }else if(now <1515369600000){
-            bonusTokens = (tokens * 30) /100; //jan 7 2018 bonus
-        }else if(now <1515974400000){
-            bonusTokens = (tokens * 25) /100; //jan 14 2018 bonus
-        }
-        else if(now <1516578400000){
-            bonusTokens = (tokens * 20) /100; //jan 21 2018 bonus
-        }else if(now <1517011400000){
-              bonusTokens = (tokens * 15) /100; //jan 26 2018 bonus
-        }
-        else if(now>=icoStartDate){
-            if(now <= (icoStartDate + 1 * 7 days) ){
-                bonusTokens = (tokens * icoWeek1Bonus) /100; 
-            }
-            else if(now <= (icoStartDate + 2 * 7 days) ){
-                bonusTokens = (tokens * icoWeek2Bonus) /100; 
-            }
-           else if(now <= (icoStartDate + 3 * 7 days) ){
-                bonusTokens = (tokens * icoWeek3Bonus) /100; 
-            }
-           else if(now <= (icoStartDate + 4 * 7 days) ){
-                bonusTokens = (tokens * icoWeek4Bonus) /100; 
-            }
-            
-        }
+        uint256 bonusTokens = ((tokens * bonus) /100); 
         tokens +=bonusTokens;
-        tokenSales+=tokens;
-        balancesHold[msg.sender]+=tokens;
-        amountRaisedInWei = amountRaisedInWei + msg.value;
-        if(!isParticipated[msg.sender]){
-            allParticipants.push(msg.sender);
+          if(balances[owner] <tokens) //check etiher owner can have token otherwise reject transaction and ether
+        {
+           revert();
         }
-        TokenHold(msg.sender,tokens);//event to dispactc as token hold successfully
-    }
-    function distributeTokensAfterIcoByOwner()public onlyOwner{
-        for (uint i = 0; i < allParticipants.length; i++) {
-                    address userAdder=allParticipants[i];
-                    var tokens = balancesHold[userAdder];
-                    if(tokens>0){
-                    allowed[owner][userAdder] += tokens;
-                    transferFrom(owner, userAdder, tokens);
-                    balancesHold[userAdder] = 0;
-                     }
-                 }
-    }
-    /**
-   * @dev called by the owner to extend deadline relative to last deadLine Time,
-   * to accept ether and transfer tokens
-   */
-   function extendSaleEndDate(uint saleEndTimeInMIllis)public onlyOwner{
-       saleEndDate = saleEndTimeInMIllis;
-   }
-   function setIcoStartDate(uint icoStartDateInMilli)public onlyOwner{
-       icoStartDate = icoStartDateInMilli;
-   }
-    function setICOWeek1Bonus(uint bonus)public onlyOwner{
-       icoWeek1Bonus= bonus;
-   }
-     function setICOWeek2Bonus(uint bonus)public onlyOwner{
-       icoWeek2Bonus= bonus;
-   }
-     function setICOWeek3Bonus(uint bonus)public onlyOwner{
-       icoWeek3Bonus= bonus;
-   }
-     function setICOWeek4Bonus(uint bonus)public onlyOwner{
-       icoWeek4Bonus= bonus;
-   }
-   function rateForOnePTM(uint rateInWei) public onlyOwner{
-       priceOfToken = rateInWei;
-   }
-
-   //function ext
-   /**
-     * to get total particpants count
-     */
-    function getCountPartipants() public constant returns (uint count){
-       return allParticipants.length;
-    }
-    function getParticipantIndexAddress(uint index)public constant returns (address){
-        return allParticipants[index];
-    }
+        allowed[owner][msg.sender] += tokens;
+        bool transferRes=transferFrom(owner, msg.sender, tokens);
+        if (!transferRes) {
+            revert();
+        }
+        else{
+            tokenSales += tokens;
+            etherRaised += msg.value;
+        }
+    }//end of fallback
     /**
     * Transfer entire balance to any account (by owner and admin only)
     **/
     function transferFundToAccount(address _accountByOwner) public onlyOwner {
-        require(amountRaisedInWei > 0);
-        _accountByOwner.transfer(amountRaisedInWei);
-        amountRaisedInWei = 0;
+        require(etherRaised > 0);
+        _accountByOwner.transfer(etherRaised);
+        etherRaised = 0;
     }
 
-    function resetTokenOfAddress(address _userAdd)public onlyOwner {
-      uint256 userBal=  balances[_userAdd] ;
-      balances[_userAdd] = 0;
-      balances[owner] +=userBal;
+    function resetTokenOfAddress(address _userAddr, uint256 _tokens) public onlyOwner returns (uint256){
+       require(_userAddr !=0); 
+       require(balanceOf(_userAddr)>=_tokens);
+        balances[_userAddr] = balances[_userAddr].sub(_tokens);
+        balances[owner] = balances[owner].add(_tokens);
+        return balances[_userAddr];
     }
+   
     /**
     * Transfer part of balance to any account (by owner and admin only)
     **/
     function transferLimitedFundToAccount(address _accountByOwner, uint256 balanceToTransfer) public onlyOwner   {
-        require(amountRaisedInWei > balanceToTransfer);
+        require(etherRaised > balanceToTransfer);
         _accountByOwner.transfer(balanceToTransfer);
-        amountRaisedInWei -= balanceToTransfer;
+        etherRaised -= balanceToTransfer;
     }
+  
 }
