@@ -292,7 +292,7 @@ contract POTENTIAM is StandardToken, Destructible {
     using SafeMath for uint256;
     uint public constant decimals = 18;
     string public constant symbol = "PTM";
-    uint public priceOfToken=181818181818181;//1 eth = 5500 PTM
+    uint public priceOfToken=185185190000000;//1 eth = 5400 PTM
     address[] allParticipants;
    
     uint tokenSales=0;
