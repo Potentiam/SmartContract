@@ -311,7 +311,7 @@ contract POTENTIAM is StandardToken, Destructible {
     function POTENTIAM()  public {
        totalSupply = 100000000 * (10**decimals);  // 
        owner = msg.sender;
-       companyReserve =   0x5b162cee49e4bf42e8b1145a9c3792ca2fb7ec42;
+       companyReserve =   0xaB88f3d3F898be769a490Ec5345C03f89d52b2CF;
        balances[msg.sender] += 75000000 * (10 **decimals);
        balances[companyReserve]  += 25000000 * (10**decimals);
        firstWeekPreICOBonusEstimate = now;
