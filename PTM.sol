@@ -211,8 +211,26 @@ contract ERC20 is ERC20Basic {
   function approve(address spender, uint256 value) public returns (bool);
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
+contract BurnableToken is BasicToken {
+    using SafeMath for uint256;
+  event Burn(address indexed burner, uint256 value);
 
-contract StandardToken is ERC20, BasicToken {
+  /**
+   * @dev Burns a specific amount of tokens.
+   * @param _value The amount of token to be burned.
+   */
+  function burn(uint256 _value) public {
+    require(_value <= balances[msg.sender]);
+    // no need to require value <= totalSupply, since that would imply the
+    // sender's balance is greater than the totalSupply, which *should* be an assertion failure
+
+    address burner = msg.sender;
+    balances[burner] = balances[burner].sub(_value);
+    totalSupply= totalSupply.sub(_value);
+    Burn(burner, _value);
+  }
+}
+contract StandardToken is ERC20, BurnableToken {
 
   mapping (address => mapping (address => uint256)) internal allowed;
 
@@ -292,7 +310,7 @@ contract POTENTIAM is StandardToken, Destructible {
     using SafeMath for uint256;
     uint public constant decimals = 18;
     string public constant symbol = "PTM";
-    uint public priceOfToken=185185190000000;//1 eth = 5400 PTM
+    uint public priceOfToken=250000000000000;//1 eth = 4000 PTM
     address[] allParticipants;
    
     uint tokenSales=0;
@@ -311,10 +329,10 @@ contract POTENTIAM is StandardToken, Destructible {
     function POTENTIAM()  public {
        totalSupply = 100000000 * (10**decimals);  // 
        owner = msg.sender;
-       companyReserve =   0xaB88f3d3F898be769a490Ec5345C03f89d52b2CF;
+       companyReserve =   0x5b162cee49e4bf42e8b1145a9c3792ca2fb7ec41;//TODO change address
        balances[msg.sender] += 75000000 * (10 **decimals);
        balances[companyReserve]  += 25000000 * (10**decimals);
-       firstWeekPreICOBonusEstimate = now;
+       firstWeekPreICOBonusEstimate = now + 7 days;
        deployTime = firstWeekPreICOBonusEstimate;
        secondWeekPreICOBonusEstimate = firstWeekPreICOBonusEstimate + 7 days;
        firstWeekMainICOBonusEstimate = firstWeekPreICOBonusEstimate + 14 days;
