@@ -334,7 +334,7 @@ contract POTENTIAM is StandardToken, Destructible {
        balances[msg.sender] += 75000000 * (10 **decimals);
        balances[companyReserve]  += 25000000 * (10**decimals);
        firstWeekPreICOBonusEstimate = now + 7 days;
-       deployTime = firstWeekPreICOBonusEstimate;
+       deployTime = now;
        secondWeekPreICOBonusEstimate = firstWeekPreICOBonusEstimate + 7 days;
        firstWeekMainICOBonusEstimate = firstWeekPreICOBonusEstimate + 14 days;
        secondWeekMainICOBonusEstimate = firstWeekPreICOBonusEstimate + 21 days;
@@ -353,7 +353,7 @@ contract POTENTIAM is StandardToken, Destructible {
         require(now<=forthWeekMainICOBonusEstimate);
         require(tokenSales < (60000000 * (10 **decimals)));
         uint256 bonus = 0;
-        if(now<=firstWeekPreICOBonusEstimate && totalWeiRaised < 5000 ether){
+        if(now<=firstWeekPreICOBonusEstimate && totalWeiRaised < 3000 ether){
             bonus = firstWeekPreICOBonusRate;
         }else if(now <=secondWeekPreICOBonusEstimate && totalWeiRaised < 6000 ether){
             bonus = secondWeekPreICOBonusRate;
