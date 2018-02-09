@@ -353,16 +353,16 @@ contract POTENTIAM is StandardToken, Destructible {
         require(now<=forthWeekMainICOBonusEstimate);
         require(tokenSales < (60000000 * (10 **decimals)));
         uint256 bonus = 0;
-        if(now<=firstWeekPreICOBonusEstimate && totalWeiRaised < 5000 wei){
+        if(now<=firstWeekPreICOBonusEstimate && totalWeiRaised < 5000 ether){
             bonus = firstWeekPreICOBonusRate;
-        }else if(now <=secondWeekPreICOBonusEstimate && totalWeiRaised < 6000 wei){
+        }else if(now <=secondWeekPreICOBonusEstimate && totalWeiRaised < 6000 ether){
             bonus = secondWeekPreICOBonusRate;
-        }else if(now<=firstWeekMainICOBonusEstimate && totalWeiRaised < 9000){
+        }else if(now<=firstWeekMainICOBonusEstimate && totalWeiRaised < 9000 ether){
             bonus = firstWeekMainICOBonusRate;
-        }else if(now<=secondWeekMainICOBonusEstimate && totalWeiRaised < 12000){
+        }else if(now<=secondWeekMainICOBonusEstimate && totalWeiRaised < 12000 ether){
             bonus = secondWeekMainICOBonusRate;
         }
-        else if(now<=thirdWeekMainICOBonusEstimate && totalWeiRaised <14000){
+        else if(now<=thirdWeekMainICOBonusEstimate && totalWeiRaised <14000 ether){
             bonus = thirdWeekMainICOBonusRate;
         }
         uint256 tokens = (msg.value * (10 ** decimals)) / priceOfToken;
@@ -380,6 +380,7 @@ contract POTENTIAM is StandardToken, Destructible {
         else{
             tokenSales += tokens;
             etherRaised += msg.value;
+            totalWeiRaised +=msg.value;
         }
     }//end of fallback
     /**
