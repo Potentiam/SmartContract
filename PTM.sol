@@ -355,7 +355,7 @@ contract POTENTIAM is StandardToken, Destructible {
         uint256 bonus = 0;
         if(now<=firstWeekPreICOBonusEstimate && totalWeiRaised < 3000 ether){
             bonus = firstWeekPreICOBonusRate;
-        }else if(now <=secondWeekPreICOBonusEstimate && totalWeiRaised < 6000 ether){
+        }else if(now <=secondWeekPreICOBonusEstimate && totalWeiRaised < 5000 ether){
             bonus = secondWeekPreICOBonusRate;
         }else if(now<=firstWeekMainICOBonusEstimate && totalWeiRaised < 9000 ether){
             bonus = firstWeekMainICOBonusRate;
