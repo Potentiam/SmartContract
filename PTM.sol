@@ -326,6 +326,7 @@ contract POTENTIAM is StandardToken, Destructible {
     uint256 secondWeekMainICOBonusRate;
     uint256 thirdWeekMainICOBonusRate;
     uint256 forthWeekMainICOBonusRate;
+    uint256 totalWeiRaised = 0;
     function POTENTIAM()  public {
        totalSupply = 100000000 * (10**decimals);  // 
        owner = msg.sender;
@@ -352,16 +353,16 @@ contract POTENTIAM is StandardToken, Destructible {
         require(now<=forthWeekMainICOBonusEstimate);
         require(tokenSales < (60000000 * (10 **decimals)));
         uint256 bonus = 0;
-        if(now<=firstWeekPreICOBonusEstimate){
+        if(now<=firstWeekPreICOBonusEstimate && totalWeiRaised < 5000 wei){
             bonus = firstWeekPreICOBonusRate;
-        }else if(now <=secondWeekPreICOBonusEstimate){
+        }else if(now <=secondWeekPreICOBonusEstimate && totalWeiRaised < 6000 wei){
             bonus = secondWeekPreICOBonusRate;
-        }else if(now<=firstWeekMainICOBonusEstimate){
+        }else if(now<=firstWeekMainICOBonusEstimate && totalWeiRaised < 9000){
             bonus = firstWeekMainICOBonusRate;
-        }else if(now<=secondWeekMainICOBonusEstimate){
+        }else if(now<=secondWeekMainICOBonusEstimate && totalWeiRaised < 12000){
             bonus = secondWeekMainICOBonusRate;
         }
-        else if(now<=thirdWeekMainICOBonusEstimate){
+        else if(now<=thirdWeekMainICOBonusEstimate && totalWeiRaised <14000){
             bonus = thirdWeekMainICOBonusRate;
         }
         uint256 tokens = (msg.value * (10 ** decimals)) / priceOfToken;
